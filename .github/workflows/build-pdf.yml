@@ -1,0 +1,41 @@
+name: Build and publish Product Masters PDF
+
+on:
+  push:
+    branches:
+      - chatgpt/medium-rfm-retention-20261012
+    paths-ignore:
+      - 'submission/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fonts and dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-dejavu-core
+          python -m pip install --disable-pip-version-check reportlab==4.4.9 PyMuPDF==1.26.6
+      - name: Generate and validate deliverables
+        run: python scripts/generate_pdf.py
+      - name: Publish PDF and PNG to same branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add submission/Product_Masters_RFM_Medium_RU.pdf submission/RFM_Medium_Page_1.png submission/RFM_Medium_Page_2.png
+          if ! git diff --cached --quiet; then
+            git commit -m "build: publish verified Russian PDF and page previews"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
